@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: raw
+    database: default
+    tables:
+      - name: raw_orders
+      - name: raw_order_items
+      - name: raw_customers
+      - name: raw_products

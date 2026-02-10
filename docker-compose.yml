@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dwh_net
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    ports:
+      - "${CH_HTTP_PORT}:8123"
+      - "${CH_NATIVE_PORT}:9000"
+    environment:
+      - CLICKHOUSE_DB=${CH_DB}
+      - CLICKHOUSE_USER=${CH_USER}
+      - CLICKHOUSE_PASSWORD=${CH_PASSWORD}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - ch_data:/var/lib/clickhouse
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dwh_net
+
+  airflow:
+    image: apache/airflow:2.9.3
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR}
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY}
+      - AIRFLOW__WEBSERVER__RBAC=${AIRFLOW__WEBSERVER__RBAC}
+      - AIRFLOW_CONN_POSTGRES_DEFAULT=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - _PIP_ADDITIONAL_REQUIREMENTS=psycopg2-binary clickhouse-connect pandas python-dotenv dbt-clickhouse
+    env_file:
+      - .env
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/requirements.txt:/requirements.txt
+      - ./dbt:/opt/airflow/dbt
+    command: bash -c "airflow db init && airflow users create --username ${AIRFLOW_USER} --password ${AIRFLOW_PASSWORD} --firstname Admin --lastname User --role Admin --email admin@example.com || true && airflow webserver & airflow scheduler"
+    ports:
+      - "${AIRFLOW_PORT}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dwh_net
+
+  superset:
+    build: ./superset
+    env_file:
+      - .env
+    environment:
+      - SUPERSET_ENV=production
+      - SUPERSET_LOAD_EXAMPLES=no
+      - ADMIN_USERNAME=${SUPERSET_USER}
+      - ADMIN_PASSWORD=${SUPERSET_PASSWORD}
+      - SUPERSET_SECRET_KEY=J8$9f#kL2!mPz@7qR4&wT5*yX1
+    ports:
+      - "${SUPERSET_PORT}:8088"
+    # volumes:
+    #   - ./superset_data:/app/superset_home
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8088/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dwh_net
+
+volumes:
+  pg_data:
+  ch_data:
+
+
+networks:
+  dwh_net:
+    driver: bridge

@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Airflow
+airflow/logs/
+airflow/airflow.db
+airflow/webserver_config.py
+
+# Superset
+superset_data/
+*.db
+
+# dbt
+dbt/logs/
+dbt/target/
+dbt/dbt_packages/
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AI Assistant
+.gemini/

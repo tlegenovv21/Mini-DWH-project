@@ -1,0 +1,11 @@
+mini_dwh:
+  target: dev
+  outputs:
+    dev:
+      type: clickhouse
+      schema: default
+      host: localhost  # or 'clickhouse' if running inside docker network
+      port: 8123
+      user: default
+      password: ''
+      secure: False
