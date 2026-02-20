@@ -2,12 +2,6 @@
 
 This project implements a local Mini-Data Warehouse using PostgreSQL, ClickHouse, Airflow, and Superset, orchestrated via Docker Compose.
 
-## Prerequisites
-
-- Docker Desktop installed and running.
-- Python 3.10+ (for local script testing if needed).
-- DBeaver (for potential database inspection).
-
 ## Quick Start
 
 1.  **Configure Environment**:
